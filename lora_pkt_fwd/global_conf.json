@@ -212,6 +212,20 @@
     "gateway_conf": {
         "gateway_ID": "AA555A0000000000",
         /* change with default server address/ports, or overwrite in local_conf.json */
+		"servers": [
+			{
+				"server_address": "router.eu.thethings.network",
+				"serv_port_up": 1700,
+				"serv_port_down": 1700,
+				"serv_enabled": true
+			},
+			{
+				"server_address": "eu1.loriot.io",
+				"serv_port_up": 1780,
+				"serv_port_down": 1780,
+				"serv_enabled": true
+			}
+		],
         "server_address": "localhost",
         "serv_port_up": 1680,
         "serv_port_down": 1680,
