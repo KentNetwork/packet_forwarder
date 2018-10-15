@@ -46,7 +46,7 @@ Maintainer: Michael Coracin
 #include <netdb.h>          /* gai_strerror */
 
 #include <pthread.h>
-
+#include <getopt.h>
 #include "trace.h"
 #include "jitqueue.h"
 #include "timersync.h"
@@ -61,6 +61,8 @@ Maintainer: Michael Coracin
 /* SPI speed variable */
 long spi_speed = SPI_SPEED;
 
+/* SPI device variable */
+const char spi_device[] = SPI_DEV_PATH; 
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE MACROS ------------------------------------------------------- */
@@ -1050,12 +1052,20 @@ static struct option long_options[] = {
         {0, 0, 0, 0},
 };
 
-int main(voint argc, char *argv[]id)
+int main(int argc, char *argv[])
 {
     struct sigaction sigact; /* SIGQUIT&SIGINT&SIGTERM signal handling */
     int i; /* loop variable and temporary variable for return value */
 	int ic; /* Server loop variable */
     int x;
+
+
+    /* configuration file related */
+    char *global_cfg_name= "global_conf.json"; /* contain global (typ. network-wide) configuration */
+    char *local_cfg_name = "local_conf.json"; /* contain node specific configuration, overwrite global parameters for parameters that are defined in both */
+    char *debug_cfg_name = "debug_conf.json"; /* if present, all other configuration files are ignored */
+
+    int opt_ind = 0;
 
     /* configuration file related */
     char cfg_dir[PATH_MAX] = {0};
@@ -1317,7 +1327,7 @@ int main(voint argc, char *argv[]id)
 	}
 
     /* starting the concentrator */
-    i = lgw_start(spi_speed);
+    i = lgw_start(spi_speed, spi_device);
     if (i == LGW_HAL_SUCCESS) {
         MSG("INFO: [main] concentrator started, packet can now be received\n");
     } else {
