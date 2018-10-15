@@ -62,8 +62,7 @@ Maintainer: Michael Coracin
 long spi_speed = SPI_SPEED;
 
 /* SPI device variable */
-const char spi_device[] = SPI_DEV_PATH; 
-
+ char *spi_device = NULL; 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE MACROS ------------------------------------------------------- */
 
@@ -1040,14 +1039,15 @@ static int send_tx_ack(int ic, uint8_t token_h, uint8_t token_l, enum jit_error_
 /* --- MAIN FUNCTION -------------------------------------------------------- */
 
 void usage(char *proc_name) {
-	fprintf(stderr, "Usage: %s [-c config_dir] [-s spi speed in hz]\n", proc_name);
+	fprintf(stderr, "Usage: %s [-c config_dir] [-s spi speed in hz] [-d device file]\n", proc_name);
 	exit(1);
 }
 
-static char *short_options = "c:s:h";
+ static char *short_options = "c:s:d:h";
 static struct option long_options[] = {
         {"config-dir", 1, 0, 'c'},
         {"speed", 1, 0, 's'},
+        {"device", 1, 0, 'd'},
         {"help", 0, 0, 'h'},
         {0, 0, 0, 0},
 };
@@ -1098,6 +1098,13 @@ int main(int argc, char *argv[])
                 exit(1);
             }
             break;
+        case 'd':
+		    spi_device = strdup(optarg);
+            if (spi_device == NULL) {
+            printf("Error: can't save spi_device name\n");
+            exit(1);
+            }
+		    break;
         default:
             usage(proc_name);
             break;
