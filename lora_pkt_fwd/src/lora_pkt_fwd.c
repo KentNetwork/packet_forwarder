@@ -46,7 +46,7 @@ Maintainer: Michael Coracin
 #include <netdb.h>          /* gai_strerror */
 
 #include <pthread.h>
-
+#include <getopt.h>
 #include "trace.h"
 #include "jitqueue.h"
 #include "timersync.h"
@@ -56,7 +56,13 @@ Maintainer: Michael Coracin
 #include "loragw_gps.h"
 #include "loragw_aux.h"
 #include "loragw_reg.h"
+#include "config.h" 
 
+/* SPI speed variable */
+long spi_speed = SPI_SPEED;
+
+/* SPI device variable */
+ char *spi_device = NULL; 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE MACROS ------------------------------------------------------- */
 
@@ -1032,18 +1038,42 @@ static int send_tx_ack(int ic, uint8_t token_h, uint8_t token_l, enum jit_error_
 /* -------------------------------------------------------------------------- */
 /* --- MAIN FUNCTION -------------------------------------------------------- */
 
-int main(void)
+void usage(char *proc_name) {
+	fprintf(stderr, "Usage: %s [-c config_dir] [-s spi speed in hz] [-d device file]\n", proc_name);
+	exit(1);
+}
+
+ static char *short_options = "c:s:d:h";
+static struct option long_options[] = {
+        {"config-dir", 1, 0, 'c'},
+        {"speed", 1, 0, 's'},
+        {"device", 1, 0, 'd'},
+        {"help", 0, 0, 'h'},
+        {0, 0, 0, 0},
+};
+
+int main(int argc, char *argv[])
 {
     struct sigaction sigact; /* SIGQUIT&SIGINT&SIGTERM signal handling */
     int i; /* loop variable and temporary variable for return value */
 	int ic; /* Server loop variable */
     int x;
 
-    /* configuration file related */
-    char *global_cfg_path= "global_conf.json"; /* contain global (typ. network-wide) configuration */
-    char *local_cfg_path = "local_conf.json"; /* contain node specific configuration, overwrite global parameters for parameters that are defined in both */
-    char *debug_cfg_path = "debug_conf.json"; /* if present, all other configuration files are ignored */
 
+    /* configuration file related */
+    char *global_cfg_name= "global_conf.json"; /* contain global (typ. network-wide) configuration */
+    char *local_cfg_name = "local_conf.json"; /* contain node specific configuration, overwrite global parameters for parameters that are defined in both */
+    char *debug_cfg_name = "debug_conf.json"; /* if present, all other configuration files are ignored */
+
+    int opt_ind = 0;
+
+    /* configuration file related */
+    char cfg_dir[PATH_MAX] = {0};
+	char global_cfg_path[PATH_MAX] = {0};
+	char local_cfg_path[PATH_MAX] = {0};
+	char debug_cfg_path[PATH_MAX] = {0};
+    char *proc_name = argv[0];
+    
     /* threads */
     pthread_t thrid_up;
 	// pthread_t thrid_down;
@@ -1052,6 +1082,38 @@ int main(void)
     pthread_t thrid_valid;
     pthread_t thrid_jit;
     pthread_t thrid_timersync;
+
+    while((i = getopt_long(argc, argv, short_options, long_options, &opt_ind)) >= 0) {
+        switch(i) {
+        case 0:
+            break;
+        case 'c':
+            strncpy(cfg_dir, optarg, sizeof(cfg_dir)-2);
+            strcat(cfg_dir, "/");
+            break;
+        case 's':
+            spi_speed = atol(optarg);
+            if (spi_speed == 0L) {
+                printf("Error: specified SPI speed is invalid\n");
+                exit(1);
+            }
+            break;
+        case 'd':
+		    spi_device = strdup(optarg);
+            if (spi_device == NULL) {
+            printf("Error: can't save spi_device name\n");
+            exit(1);
+            }
+		    break;
+        default:
+            usage(proc_name);
+            break;
+        }
+    }
+
+    snprintf(global_cfg_path, sizeof(global_cfg_path),  "%s%s", cfg_dir, global_cfg_name);
+    snprintf(local_cfg_path, sizeof(local_cfg_path),  "%s%s", cfg_dir, local_cfg_name);
+    snprintf(debug_cfg_path, sizeof(debug_cfg_path), "%s%s", cfg_dir, debug_cfg_name);
 
     /* network socket creation */
     struct addrinfo hints;
@@ -1272,7 +1334,7 @@ int main(void)
 	}
 
     /* starting the concentrator */
-    i = lgw_start();
+    i = lgw_start(spi_speed, spi_device);
     if (i == LGW_HAL_SUCCESS) {
         MSG("INFO: [main] concentrator started, packet can now be received\n");
     } else {
